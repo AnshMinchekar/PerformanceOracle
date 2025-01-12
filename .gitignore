@@ -1,0 +1,19 @@
+# Dependency directories
+node_modules/
+artifacts/
+contracts/
+cache/
+
+#Environment Variables
+.env
+
+#Unnecessary Scripts
+scripts/deploy.js
+scripts/interact.js
+
+#Unnecessary Files
+performanceMetrics.json
+
+#ABIs
+test.json
+VALKToken.json

@@ -1,0 +1,37 @@
+swagger: '2.0'
+info:
+  title: API Documentation
+  version: 1.0.0
+  description: API to execute scripts and track metrics.
+servers:
+  - url: http://localhost:3000
+paths:
+  /run/oracle:
+    get:
+      summary: Execute the Oracle script.
+      responses:
+        '200':
+          description: Successfully executed the Oracle script.
+        '500':
+          description: Failed to execute the Oracle script.
+  /run/uploader:
+    get:
+      summary: Execute the Uploader script.
+      responses:
+        '200':
+          description: Successfully executed the Uploader script.
+        '500':
+          description: Failed to execute the Uploader script.
+  /run/all:
+    get:
+      summary: Execute all scripts (Oracle and Uploader).
+      responses:
+        '200':
+          description: Successfully executed all scripts.
+        '500':
+          description: Failed to execute all scripts.
+definitions: {}
+responses: {}
+parameters: {}
+securityDefinitions: {}
+tags: []
