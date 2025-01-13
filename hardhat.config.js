@@ -6,7 +6,7 @@ module.exports = {
 
   network:{
     RPCUrl: process.env.RPCUrl, 
-    ChainId: process.env.ChainId //for Sepolia
+    ChainId: process.env.ChainId 
 },
 
 };
