@@ -1,24 +1,25 @@
 const express = require('express');
 const { exec } = require('child_process');
 const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./swaggerConfig');
+const swaggerSpec = require('./swaggerConfig'); 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const runningProcesses = new Map(); 
-const scriptsToRun = ['oracle.js', 'uploader.js']; 
 
-
+/**
+ * Start a script and return the child process.
+ */
 function runScript(scriptName) {
     return new Promise((resolve, reject) => {
         console.log(`Starting script: ${scriptName}...`);
         const child = exec(`npx hardhat run scripts/${scriptName}`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`[${scriptName}] Error:`, error.message);
-                runningProcesses.delete(scriptName); // Remove from tracking on error
+                runningProcesses.delete(scriptName); 
                 return reject(error.message);
             }
-            runningProcesses.delete(scriptName); // Remove when completed
+            runningProcesses.delete(scriptName); 
             resolve(stdout);
         });
 
@@ -34,25 +35,25 @@ function runScript(scriptName) {
     });
 }
 
-
-function stopScript(scriptName) {
-    const process = runningProcesses.get(scriptName);
-
-    if (!process) {
-        console.error(`Script ${scriptName} is not running.`);
-        return false;
-    }
-
-    try {
-        process.kill('SIGTERM'); // Send termination signal
-        runningProcesses.delete(scriptName); // Remove from tracking
-        console.log(`Script ${scriptName} stopped successfully.`);
-        return true;
-    } catch (error) {
-        console.error(`Failed to stop script ${scriptName}:`, error);
-        return false;
-    }
+/**
+ * Stop all running scripts.
+ */
+function stopAllScripts() {
+    runningProcesses.forEach((_, scriptName) => {
+        console.log(`Stopping script: ${scriptName}`);
+        const process = runningProcesses.get(scriptName);
+        if (process) {
+            try {
+                process.kill('SIGTERM');
+                console.log(`Script ${scriptName} stopped successfully.`);
+            } catch (error) {
+                console.error(`Failed to stop script ${scriptName}:`, error);
+            }
+        }
+    });
+    runningProcesses.clear();
 }
+
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -63,61 +64,86 @@ app.get('/', (req, res) => {
 
 /**
  * @swagger
- * /run/until:
+ * /run/schedule:
  *   post:
- *     summary: Automatically run predefined scripts and stop them at a specific time.
+ *     summary: Schedule scripts to start and stop at specific times.
  *     parameters:
+ *       - name: startTime
+ *         in: query
+ *         required: true
+ *         description: Start time in HH:mm format (24-hour clock).
+ *         schema:
+ *           type: string
  *       - name: endTime
  *         in: query
  *         required: true
- *         description: The time (in HH:mm format, 24-hour clock) when the scripts should stop.
+ *         description: End time in HH:mm format (24-hour clock).
  *         schema:
  *           type: string
  *     responses:
  *       200:
- *         description: Scripts started successfully and will stop at the specified time.
+ *         description: Scripts scheduled successfully.
  *       400:
- *         description: Invalid input.
+ *         description: Invalid input or logical errors in time constraints.
  */
-app.post('/run/until', (req, res) => {
-    const { endTime } = req.query;
+app.post('/run/schedule', (req, res) => {
+    const { startTime, endTime } = req.query;
 
-    if (!endTime || !/^\d{2}:\d{2}$/.test(endTime)) {
-        return res.status(400).send({ error: 'Enter end time in HH:mm format.' });
+    // Validate time format (HH:mm)
+    if (!startTime || !endTime || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+        return res.status(400).send({ error: 'Please provide valid startTime and endTime in HH:mm format.' });
     }
 
-    const [endHour, endMinute] = endTime.split(':').map(Number);
     const now = new Date();
-    const endTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHour, endMinute).getTime();
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+
+    const startTimestamp = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        startHour,
+        startMinute
+    ).getTime();
+
+    const endTimestamp = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        endHour,
+        endMinute
+    ).getTime();
+
 
     if (endTimestamp <= now.getTime()) {
-        return res.status(400).send({ error: 'Invalid. End time needs to be in the future' });
+        return res.status(400).send({ error: 'End time must be in the future.' });
+    }
+    if (startTimestamp >= endTimestamp) {
+        return res.status(400).send({ error: 'Start time must be earlier than end time.' });
     }
 
- 
-    scriptsToRun.forEach((scriptName) => {
-        runScript(scriptName)
-            .then(() => {
-                console.log(`Script ${scriptName} started successfully.`);
-            })
-            .catch((error) => {
-                console.error(`Failed to start script ${scriptName}:`, error);
-            });
-    });
+    console.log(`Scripts scheduled to start at ${startTime} and stop at ${endTime}.`);
 
-
+    // Schedule start of scripts
     setTimeout(() => {
-        scriptsToRun.forEach((scriptName) => {
-            const stopped = stopScript(scriptName);
-            if (stopped) {
-                console.log(`Script ${scriptName} stopped automatically at the specified time.`);
-            }
-        });
+        runScript('oracle.js')
+            .then(() => console.log('Oracle script started.'))
+            .catch((error) => console.error('Failed to start Oracle script:', error));
+
+        runScript('uploader.js')
+            .then(() => console.log('Uploader script started.'))
+            .catch((error) => console.error('Failed to start Uploader script:', error));
+    }, startTimestamp - now.getTime());
+
+    // Schedule stopping the server
+    setTimeout(() => {
+        console.log('Shutting down the server...');
+        stopAllScripts();
+        process.exit(0); // Forcefully shut down the server
     }, endTimestamp - now.getTime());
 
     res.status(200).send({
-        message: `Scripts started successfully and will stop at ${endTime}.`,
-        scripts: scriptsToRun,
+        message: `Scripts scheduled successfully. Start time: ${startTime}, End time: ${endTime}.`,
     });
 });
 
@@ -125,26 +151,37 @@ app.post('/run/until', (req, res) => {
  * @swagger
  * /stop/all:
  *   post:
- *     summary: Stop all running predefined scripts manually.
+ *     summary: Manually stop all running scripts.
  *     responses:
  *       200:
  *         description: All scripts stopped successfully.
+ *       500:
+ *         description: Failed to stop scripts.
  */
 app.post('/stop/all', (req, res) => {
-    const stoppedScripts = [];
-    runningProcesses.forEach((_, scriptName) => {
-        const stopped = stopScript(scriptName);
-        if (stopped) {
-            stoppedScripts.push(scriptName);
-        }
-    });
-
-    if (stoppedScripts.length === 0) {
-        return res.status(404).send({ error: 'No scripts were running.' });
-    }
-
-    res.status(200).send({ message: 'All scripts stopped successfully.', scripts: stoppedScripts });
+    stopAllScripts();
+    res.status(200).send({ message: 'All running scripts stopped successfully.' });
 });
+
+/**
+ * @swagger
+ * /shutdown:
+ *   post:
+ *     summary: Shut down the server and stop all running scripts.
+ *     responses:
+ *       200:
+ *         description: Server is shutting down.
+ */
+app.post('/shutdown', (req, res) => {
+    console.log('Shutting down server...');
+    stopAllScripts();
+    res.status(200).send({ message: 'Server is shutting down.' });
+
+    setTimeout(() => {
+        process.exit(0); 
+    }, 1000);
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
