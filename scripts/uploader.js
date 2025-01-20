@@ -2,35 +2,34 @@ require('dotenv').config();
 const fs = require('fs');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 
-//InfluxDB client instance
-const influxDB = new InfluxDB({
-    url: process.env.IDB_URL,
-    token: process.env.IDB_TOKEN,
-});
+async function uploaderFunction({ stopTime }) {
+    const influxDB = new InfluxDB({
+        url: process.env.IDB_URL,
+        token: process.env.IDB_TOKEN,
+    });
 
-//Initializing bucket
-const bucket = process.env.IDB_BUCKET;
-const org = process.env.IDB_ORG;
+    const bucket = process.env.IDB_BUCKET;
+    const org = process.env.IDB_ORG;
 
-async function uploadDataToInfluxDB() {
     const filePath = 'performanceMetrics.json';
     let lastModifiedTime = null;
 
-    console.log("Monitoring for updates to JSON File.");
+    console.log("Uploader Function started.");
 
-    // Polling mechanism for updates to the json file.
-    setInterval(async () => {
+   
+    const stopTimestamp = new Date(stopTime).getTime();
+
+
+    while (Date.now() < stopTimestamp) {
         try {
             if (fs.existsSync(filePath)) {
                 const currentStats = fs.statSync(filePath);
                 const currentModifiedTime = currentStats.mtime;
 
-                // Check if the file has been modified
                 if (!lastModifiedTime || currentModifiedTime > lastModifiedTime) {
-                    lastModifiedTime = currentModifiedTime; //Update the last modified time
+                    lastModifiedTime = currentModifiedTime;
                     console.log("File updated. Proceeding to read and upload data...");
 
-                    // Read the performance metrics from the JSON file
                     const jsonData = fs.readFileSync(filePath, 'utf8');
                     let metrics;
 
@@ -38,14 +37,12 @@ async function uploadDataToInfluxDB() {
                         metrics = JSON.parse(jsonData);
                     } catch (error) {
                         console.error("Error parsing JSON data:", error);
-                        return; // Exit if JSON parsing fails
+                        continue;
                     }
 
-                    // Creating a write API instance
                     const writeApi = influxDB.getWriteApi(org, bucket);
 
-                    metrics.forEach(metric => {
-                        //Logging Metrics
+                    for (const metric of metrics) {
                         console.log("Uploading metric:", metric);
 
                         const gasUsed = parseFloat(metric.gasUsed);
@@ -55,7 +52,6 @@ async function uploadDataToInfluxDB() {
                         const totalTransactions = parseInt(metric.totalTransactions);
                         const eventsEmitted = parseInt(metric.eventsEmitted);
 
-                        //Checking for NaN Values
                         if (
                             isNaN(gasUsed) ||
                             isNaN(avgGasPrice) ||
@@ -63,24 +59,23 @@ async function uploadDataToInfluxDB() {
                             isNaN(avgGasPriceInUSD)
                         ) {
                             console.warn(`Invalid data for txHash ${metric.txHash}: Metrics contain invalid values.`);
-                            return; 
+                            continue;
                         }
 
                         const point = new Point('performance_metrics')
-                            .tag('contract', metric.contract)  // Using the contract as a tag
-                            .tag('txHash', metric.txHash)      // Using the txHash as a tag
-                            .timestamp(new Date(metric.timestamp)) // Include timestamp
-                            .floatField('gasUsed', gasUsed)  // Store gas used as a float field
-                            .floatField('gasUsedInUSD', gasUsedInUSD) // Store gas used in USD
-                            .floatField('avgGasPrice', avgGasPrice) // Store avg gas price as a float field
-                            .floatField('avgGasPriceInUSD', avgGasPriceInUSD) // Store avg gas price in USD
-                            .intField('totalTransactions', totalTransactions) // Store total txns as an int field
-                            .intField('eventsEmitted', eventsEmitted); // Store events emitted as an int field
+                            .tag('contract', metric.contract)
+                            .tag('txHash', metric.txHash)
+                            .timestamp(new Date(metric.timestamp))
+                            .floatField('gasUsed', gasUsed)
+                            .floatField('gasUsedInUSD', gasUsedInUSD)
+                            .floatField('avgGasPrice', avgGasPrice)
+                            .floatField('avgGasPriceInUSD', avgGasPriceInUSD)
+                            .intField('totalTransactions', totalTransactions)
+                            .intField('eventsEmitted', eventsEmitted);
 
                         writeApi.writePoint(point);
-                    });
+                    }
 
-                    // Flush the write API
                     await writeApi.close();
                     console.log(`Successfully uploaded ${metrics.length} metrics to InfluxDB.`);
                 }
@@ -90,7 +85,12 @@ async function uploadDataToInfluxDB() {
         } catch (error) {
             console.error("Error while processing the file:", error);
         }
-    }, 5000); // Polling every 5 seconds
+
+        
+        await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+
+    console.log("Uploader Function stopped.");
 }
 
-uploadDataToInfluxDB();
+module.exports = { uploaderFunction };
