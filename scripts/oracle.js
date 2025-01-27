@@ -11,20 +11,26 @@ async function oracleFunction({ stopTime }) {
     const contracts = [
         {
             address: process.env.conAdd_1,
-            abi: require('../VALKToken.json'), 
+            abi: require('./Path to ABI'), 
         },
         {
             address: process.env.conAdd_2,
-            abi: require('../Incre.json'), 
+            abi: require('./Path to ABI'), 
+        },
+        {
+            address: process.env.conAdd_3,
+            abi: require('./Path to ABI'), 
         },
     ];
-    
+
+
     contracts.forEach(({ abi, address }) => {
         if (!Array.isArray(abi)) {
             throw new Error(`Invalid ABI format for contract at address ${address}. Ensure it is an array.`);
         }
     });
-    
+
+    let totalTransactions = 0; 
 
     const stopTimestamp = new Date(stopTime).getTime();
 
@@ -35,9 +41,11 @@ async function oracleFunction({ stopTime }) {
 
         console.log(`Listening to contract: ${address}`);
 
-
+       
         contract.on("*", async (...args) => {
-            const event = args[args.length - 1]; 
+            totalTransactions++;
+
+            const event = args[args.length - 1];
             const transactionHash = event.transactionHash;
 
             const block = await provider.getBlock(event.blockNumber);
@@ -58,12 +66,13 @@ async function oracleFunction({ stopTime }) {
                 blockTimestamp,
                 transactionHash,
                 contract: address,
-                eventName: event.event, 
-                eventArgs: event.args, 
+                eventName: event.event,
+                eventArgs: event.args,
                 gasUsed: gasUsedInETH,
                 gasUsedInUSD,
                 gasPrice: gasPriceInETH,
                 gasPriceInUSD,
+                totalTransactions, 
             };
 
             console.log(`Event Detected from contract ${address}: ${event.event}`);
@@ -71,6 +80,7 @@ async function oracleFunction({ stopTime }) {
 
             await writeEventToFile(eventDetails);
 
+            
             if (Date.now() >= stopTimestamp) {
                 console.log(`Stopping Oracle Function for contract ${address}...`);
                 contract.removeAllListeners("*");
@@ -94,10 +104,5 @@ async function oracleFunction({ stopTime }) {
         fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), "utf8");
     }
 }
-
-// if (require.main === module) {
-//     oracleFunction();
-// }
-
 
 module.exports = { oracleFunction };
