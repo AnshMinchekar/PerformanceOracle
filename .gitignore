@@ -4,8 +4,6 @@ artifacts/
 contracts/
 cache/
 
-#Environment Variables
-.env
 
 #Unnecessary Scripts
 scripts/deploy.js

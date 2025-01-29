@@ -3,7 +3,7 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerJsDoc = require("swagger-jsdoc");
 const { oracleFunction } = require("./scripts/oracle");
 const { uploaderFunction } = require("./scripts/uploader");
-equire("dotenv-safe").config();
+require("dotenv-safe").config();
 
 const app = express();
 app.use(express.json());
