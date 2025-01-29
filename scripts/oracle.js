@@ -4,112 +4,104 @@ async function oracleFunction({ stopTime }) {
     const { ethers } = require("hardhat");
     const fs = require("fs");
 
-    const contracts = [
-        { address: process.env.conAdd_1 },
-        { address: process.env.conAdd_2 },
-    ];
     const rpcUrl = process.env.RPCUrl;
-    const convRate = process.env.ConvRate;
-    const batchSize = 10;
-
-    let totalTransactions = 0;
-    let transactionBatch = [];
-    const ethToUsdRate = parseFloat(convRate);
+    const convRate = parseFloat(process.env.ConvRate); 
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
-    const contractMetrics = contracts.reduce((acc, contract) => {
-        acc[contract.address] = {
-            totalGasPrice: ethers.BigNumber.from(0),
-            txCount: 0,
-            eventCount: 0,
-        };
-        return acc;
-    }, {});
+    const contracts = [
+        {
+            address: process.env.conAdd_1,
+            abi: require('./Path to ABI'), 
+        },
+        {
+            address: process.env.conAdd_2,
+            abi: require('./Path to ABI'), 
+        },
+        {
+            address: process.env.conAdd_3,
+            abi: require('./Path to ABI'), 
+        },
+    ];
 
-    console.log(`Tracking performance metrics for contracts: ${contracts.map(c => c.address).join(", ")}`);
-    const stopTimestamp = new Date(stopTime).getTime();
 
-    provider.on("block", async (blockNumber) => {
-        if (Date.now() >= stopTimestamp) {
-            console.log("Stopping Oracle Function...");
-            provider.removeAllListeners("block");
-            return;
+    contracts.forEach(({ abi, address }) => {
+        if (!Array.isArray(abi)) {
+            throw new Error(`Invalid ABI format for contract at address ${address}. Ensure it is an array.`);
         }
-
-        console.log(`Processing block number: ${blockNumber}`);
-        const block = await provider.getBlock(blockNumber);
-        const transactions = block.transactions;
-
-        const txPromises = transactions.map(async (txHash) => {
-            try {
-                const tx = await provider.getTransaction(txHash);
-                for (const contract of contracts) {
-                    const { address } = contract;
-
-                    if (tx.to && tx.to === address) {
-                        const txReceipt = await provider.getTransactionReceipt(txHash);
-
-                        if (txReceipt && txReceipt.gasUsed) {
-                            const gasUsed = txReceipt.gasUsed;
-                            const gasPrice = tx.gasPrice || ethers.BigNumber.from(0);
-
-                            const gasUsedInETH = ethers.utils.formatEther(gasUsed);
-                            const gasPriceInETH = ethers.utils.formatEther(gasPrice);
-
-                            const gasUsedInUSD = (parseFloat(gasUsedInETH) * ethToUsdRate);
-                            const gasPriceInUSD = (parseFloat(gasPriceInETH) * ethToUsdRate);
-
-                            contractMetrics[address].txCount++;
-                            contractMetrics[address].eventCount += txReceipt.logs.length;
-
-                            totalTransactions++;
-
-                            const transactionData = {
-                                timestamp: new Date(block.timestamp * 1000).toISOString(),
-                                contract: address,
-                                txHash,
-                                gasUsed: gasUsedInETH,
-                                gasUsedInUSD,
-                                avgGasPrice: gasPriceInETH,
-                                avgGasPriceInUSD: gasPriceInUSD,
-                                contractTxCount: contractMetrics[address].txCount,
-                                totalTransactions,
-                                eventsEmitted: contractMetrics[address].eventCount,
-                            };
-
-                            transactionBatch.push(transactionData);
-
-                            if (transactionBatch.length >= batchSize) {
-                                await writeBatchToFile(transactionBatch);
-                                transactionBatch = [];
-                            }
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error("Error processing transaction:", error);
-            }
-        });
-
-        await Promise.all(txPromises);
-
-        console.log(`Total Transactions: ${totalTransactions}`);
     });
 
-    async function writeBatchToFile(batch) {
+    let totalTransactions = 0; 
+
+    const stopTimestamp = new Date(stopTime).getTime();
+
+    console.log(`Listening for events from multiple contracts...`);
+
+    for (const { address, abi } of contracts) {
+        const contract = new ethers.Contract(address, abi, provider);
+
+        console.log(`Listening to contract: ${address}`);
+
+       
+        contract.on("*", async (...args) => {
+            totalTransactions++;
+
+            const event = args[args.length - 1];
+            const transactionHash = event.transactionHash;
+
+            const block = await provider.getBlock(event.blockNumber);
+            const blockTimestamp = new Date(block.timestamp * 1000).toISOString();
+
+            const tx = await provider.getTransaction(transactionHash);
+            const receipt = await provider.getTransactionReceipt(transactionHash);
+
+            const gasUsed = receipt.gasUsed.toString();
+            const gasPrice = tx.gasPrice.toString();
+            const gasUsedInETH = ethers.utils.formatEther(gasUsed);
+            const gasPriceInETH = ethers.utils.formatEther(gasPrice);
+            const gasUsedInUSD = parseFloat(gasUsedInETH) * convRate;
+            const gasPriceInUSD = parseFloat(gasPriceInETH) * convRate;
+
+            const eventDetails = {
+                blockNumber: event.blockNumber,
+                blockTimestamp,
+                transactionHash,
+                contract: address,
+                eventName: event.event,
+                eventArgs: event.args,
+                gasUsed: gasUsedInETH,
+                gasUsedInUSD,
+                gasPrice: gasPriceInETH,
+                gasPriceInUSD,
+                totalTransactions, 
+            };
+
+            console.log(`Event Detected from contract ${address}: ${event.event}`);
+            console.log("Details:", eventDetails);
+
+            await writeEventToFile(eventDetails);
+
+            
+            if (Date.now() >= stopTimestamp) {
+                console.log(`Stopping Oracle Function for contract ${address}...`);
+                contract.removeAllListeners("*");
+            }
+        });
+    }
+
+    async function writeEventToFile(eventData) {
+        const filePath = "eventsData.json";
         let existingData = [];
-        if (fs.existsSync("performanceMetrics.json")) {
-            const data = fs.readFileSync("performanceMetrics.json", "utf8");
+        if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, "utf8");
             try {
                 existingData = JSON.parse(data);
             } catch (error) {
-                console.error("Error parsing the data:", error);
+                console.error("Error parsing the event data file:", error);
             }
         }
 
-        existingData = existingData.concat(batch);
-
-        fs.writeFileSync("performanceMetrics.json", JSON.stringify(existingData, null, 2), "utf8");
+        existingData.push(eventData);
+        fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), "utf8");
     }
 }
 

@@ -11,14 +11,12 @@ async function uploaderFunction({ stopTime }) {
     const bucket = process.env.IDB_BUCKET;
     const org = process.env.IDB_ORG;
 
-    const filePath = 'performanceMetrics.json';
+    const filePath = 'eventsData.json'; 
     let lastModifiedTime = null;
 
     console.log("Uploader Function started.");
 
-   
     const stopTimestamp = new Date(stopTime).getTime();
-
 
     while (Date.now() < stopTimestamp) {
         try {
@@ -47,10 +45,9 @@ async function uploaderFunction({ stopTime }) {
 
                         const gasUsed = parseFloat(metric.gasUsed);
                         const gasUsedInUSD = parseFloat(metric.gasUsedInUSD);
-                        const avgGasPrice = parseFloat(metric.avgGasPrice);
-                        const avgGasPriceInUSD = parseFloat(metric.avgGasPriceInUSD);
+                        const avgGasPrice = parseFloat(metric.gasPrice);
+                        const avgGasPriceInUSD = parseFloat(metric.gasPriceInUSD);
                         const totalTransactions = parseInt(metric.totalTransactions);
-                        const eventsEmitted = parseInt(metric.eventsEmitted);
 
                         if (
                             isNaN(gasUsed) ||
@@ -58,20 +55,21 @@ async function uploaderFunction({ stopTime }) {
                             isNaN(gasUsedInUSD) ||
                             isNaN(avgGasPriceInUSD)
                         ) {
-                            console.warn(`Invalid data for txHash ${metric.txHash}: Metrics contain invalid values.`);
+                            console.warn(`Invalid data for txHash ${metric.transactionHash}: Metrics contain invalid values.`);
                             continue;
                         }
 
                         const point = new Point('performance_metrics')
                             .tag('contract', metric.contract)
-                            .tag('txHash', metric.txHash)
-                            .timestamp(new Date(metric.timestamp))
+                            .tag('txHash', metric.transactionHash)
+                            .tag('eventName', metric.eventName)
+                            .timestamp(new Date(metric.blockTimestamp))
                             .floatField('gasUsed', gasUsed)
                             .floatField('gasUsedInUSD', gasUsedInUSD)
                             .floatField('avgGasPrice', avgGasPrice)
                             .floatField('avgGasPriceInUSD', avgGasPriceInUSD)
                             .intField('totalTransactions', totalTransactions)
-                            .intField('eventsEmitted', eventsEmitted);
+                            .intField('eventsEmitted', metric.eventArgs ? Object.keys(metric.eventArgs).length : 0); 
 
                         writeApi.writePoint(point);
                     }
@@ -80,13 +78,12 @@ async function uploaderFunction({ stopTime }) {
                     console.log(`Successfully uploaded ${metrics.length} metrics to InfluxDB.`);
                 }
             } else {
-                console.log("Waiting for performanceMetrics.json to be created...");
+                console.log("Waiting for eventsData.json to be created...");
             }
         } catch (error) {
             console.error("Error while processing the file:", error);
         }
 
-        
         await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
