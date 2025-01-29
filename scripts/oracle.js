@@ -1,108 +1,105 @@
-require('dotenv').config();
+require("dotenv").config();
 
 async function oracleFunction({ stopTime }) {
-    const { ethers } = require("hardhat");
-    const fs = require("fs");
+  const { ethers } = require("hardhat");
+  const fs = require("fs");
 
-    const rpcUrl = process.env.RPCUrl;
-    const convRate = parseFloat(process.env.ConvRate); 
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+  const rpcUrl = process.env.RPCUrl;
+  const convRate = parseFloat(process.env.ConvRate);
+  const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
-    const contracts = [
-        {
-            address: process.env.conAdd_1,
-            abi: require('./Path to ABI'), 
-        },
-        {
-            address: process.env.conAdd_2,
-            abi: require('./Path to ABI'), 
-        },
-        {
-            address: process.env.conAdd_3,
-            abi: require('./Path to ABI'), 
-        },
-    ];
+  const contracts = [
+    {
+      address: process.env.conAdd_1,
+      abi: require("./Path to ABI"),
+    },
+    {
+      address: process.env.conAdd_2,
+      abi: require("./Path to ABI"),
+    },
+    {
+      address: process.env.conAdd_3,
+      abi: require("./Path to ABI"),
+    },
+  ];
 
+  contracts.forEach(({ abi, address }) => {
+    if (!Array.isArray(abi)) {
+      throw new Error(`Invalid ABI format for contract at address ${address}. Ensure it is an array.`);
+    }
+  });
 
-    contracts.forEach(({ abi, address }) => {
-        if (!Array.isArray(abi)) {
-            throw new Error(`Invalid ABI format for contract at address ${address}. Ensure it is an array.`);
-        }
+  let totalTransactions = 0;
+
+  const stopTimestamp = new Date(stopTime).getTime();
+
+  console.log(`Listening for events from multiple contracts...`);
+
+  for (const { address, abi } of contracts) {
+    const contract = new ethers.Contract(address, abi, provider);
+
+    console.log(`Listening to contract: ${address}`);
+
+    contract.on("*", async (...args) => {
+      totalTransactions++;
+
+      const event = args[args.length - 1];
+      const transactionHash = event.transactionHash;
+
+      const block = await provider.getBlock(event.blockNumber);
+      const blockTimestamp = new Date(block.timestamp * 1000).toISOString();
+
+      const tx = await provider.getTransaction(transactionHash);
+      const receipt = await provider.getTransactionReceipt(transactionHash);
+
+      const gasUsed = receipt.gasUsed.toString();
+      const gasPrice = tx.gasPrice.toString();
+      const gasUsedInETH = ethers.utils.formatEther(gasUsed);
+      const gasPriceInETH = ethers.utils.formatEther(gasPrice);
+      const gasUsedInUSD = parseFloat(gasUsedInETH) * convRate;
+      const gasPriceInUSD = parseFloat(gasPriceInETH) * convRate;
+
+      const eventDetails = {
+        blockNumber: event.blockNumber,
+        blockTimestamp,
+        transactionHash,
+        contract: address,
+        eventName: event.event,
+        eventArgs: event.args,
+        gasUsed: gasUsedInETH,
+        gasUsedInUSD,
+        gasPrice: gasPriceInETH,
+        gasPriceInUSD,
+        totalTransactions,
+      };
+
+      console.log(`Event Detected from contract ${address}: ${event.event}`);
+      console.log("Details:", eventDetails);
+
+      await writeEventToFile(eventDetails);
+
+      if (Date.now() >= stopTimestamp) {
+        console.log(`Stopping Oracle Function for contract ${address}...`);
+        contract.removeAllListeners("*");
+      }
     });
+  }
 
-    let totalTransactions = 0; 
-
-    const stopTimestamp = new Date(stopTime).getTime();
-
-    console.log(`Listening for events from multiple contracts...`);
-
-    for (const { address, abi } of contracts) {
-        const contract = new ethers.Contract(address, abi, provider);
-
-        console.log(`Listening to contract: ${address}`);
-
-       
-        contract.on("*", async (...args) => {
-            totalTransactions++;
-
-            const event = args[args.length - 1];
-            const transactionHash = event.transactionHash;
-
-            const block = await provider.getBlock(event.blockNumber);
-            const blockTimestamp = new Date(block.timestamp * 1000).toISOString();
-
-            const tx = await provider.getTransaction(transactionHash);
-            const receipt = await provider.getTransactionReceipt(transactionHash);
-
-            const gasUsed = receipt.gasUsed.toString();
-            const gasPrice = tx.gasPrice.toString();
-            const gasUsedInETH = ethers.utils.formatEther(gasUsed);
-            const gasPriceInETH = ethers.utils.formatEther(gasPrice);
-            const gasUsedInUSD = parseFloat(gasUsedInETH) * convRate;
-            const gasPriceInUSD = parseFloat(gasPriceInETH) * convRate;
-
-            const eventDetails = {
-                blockNumber: event.blockNumber,
-                blockTimestamp,
-                transactionHash,
-                contract: address,
-                eventName: event.event,
-                eventArgs: event.args,
-                gasUsed: gasUsedInETH,
-                gasUsedInUSD,
-                gasPrice: gasPriceInETH,
-                gasPriceInUSD,
-                totalTransactions, 
-            };
-
-            console.log(`Event Detected from contract ${address}: ${event.event}`);
-            console.log("Details:", eventDetails);
-
-            await writeEventToFile(eventDetails);
-
-            
-            if (Date.now() >= stopTimestamp) {
-                console.log(`Stopping Oracle Function for contract ${address}...`);
-                contract.removeAllListeners("*");
-            }
-        });
+  async function writeEventToFile(eventData) {
+    const filePath = "eventsData.json";
+    let existingData = [];
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, "utf8");
+      try {
+        existingData = JSON.parse(data);
+      } catch (error) {
+        console.error("Error parsing the event data file:", error);
+      }
     }
 
-    async function writeEventToFile(eventData) {
-        const filePath = "eventsData.json";
-        let existingData = [];
-        if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, "utf8");
-            try {
-                existingData = JSON.parse(data);
-            } catch (error) {
-                console.error("Error parsing the event data file:", error);
-            }
-        }
-
-        existingData.push(eventData);
-        fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), "utf8");
-    }
+    existingData.push(eventData);
+    fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), "utf8");
+  }
 }
 
 module.exports = { oracleFunction };

@@ -29,34 +29,29 @@ pipeline {
                 }
             }
         }
-            stage('Setup Docker Buildx') {
-                steps {
-                    echo 'Setting up Docker Buildx'
-                    sh '''
-                        export DOCKER_CLI_EXPERIMENTAL=enabled
-                        docker run --rm --privileged docker/binfmt:a7996909642ee92942dcd6cff44b9b95f08dad64
-                        docker buildx rm mybuilder || true
-                        docker buildx create --name mybuilder --driver docker-container --use
-                        docker buildx inspect mybuilder --bootstrap
-                    '''
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker Image'
+                script {
+                    app = docker.build("hardhat-performance-oracle")
                 }
             }
-
-            stage('Build and Push Docker Image') {
-                steps {
-                    echo 'Building and Pushing Docker Image'
-                    script {
-                        sh 'docker buildx build --platform linux/arm64 -t ie3vm049:5001/oracle-redoxflow:latest --load .'
-                        sh 'docker push ie3vm049:5001/oracle-redoxflow:latest' 
+        }
+        stage('Push Docker Image') {
+            steps {
+                echo 'Pushing Docker Image'
+                script {
+                    docker.withRegistry("http://ie3vm049:5001") {
+                        app.push("latest")
                     }
                 }
             }
-
-        stage('Trigger Portainer Webhook') {
+        }
+         stage('Trigger Portainer Webhook') {
             steps {
                 echo 'Triggering Portainer Webhook'
                 sh '''
-                    curl --insecure --request POST tbd
+                    curl --insecure --request POST https://ie3vm034:9443/api/webhooks/8414aa85-9184-41da-9e1c-fd8597de456f
                 '''
             }
         }
