@@ -1,33 +1,34 @@
-const express = require('express');
-const swaggerUi = require('swagger-ui-express');
-const swaggerJsDoc = require('swagger-jsdoc');
-const { oracleFunction } = require('./scripts/oracle');
-const { uploaderFunction } = require('./scripts/uploader');
+const express = require("express");
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsDoc = require("swagger-jsdoc");
+const { oracleFunction } = require("./scripts/oracle");
+const { uploaderFunction } = require("./scripts/uploader");
+equire("dotenv-safe").config();
 
 const app = express();
 app.use(express.json());
 
-let runningTasks = []; 
+let runningTasks = [];
 
 const swaggerOptions = {
-    definition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'Performance Oracle API',
-            version: '1.0.0',
-            description: 'API to schedule and monitor Oracle and Uploader functions',
-        },
-        servers: [
-            {
-                url: 'http://localhost:3000',
-            },
-        ],
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Performance Oracle API",
+      version: "1.0.0",
+      description: "API to schedule and monitor Oracle and Uploader functions",
     },
-    apis: ['./server.js'],
+    servers: [
+      {
+        url: "http://0.0.0.0:10002",
+      },
+    ],
+  },
+  apis: ["./server.js"],
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 /**
  * @swagger
@@ -53,72 +54,58 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
  *       400:
  *         description: Invalid input or logical errors in time constraints
  */
-app.post('/run/schedule', (req, res) => {
-    const { startTime, endTime } = req.query;
+app.post("/run/schedule", (req, res) => {
+  const { startTime, endTime } = req.query;
 
-    
-    if (!startTime || !endTime || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
-        return res.status(400).send({ error: 'Please provide valid startTime and endTime in HH:mm format.' });
+  if (!startTime || !endTime || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+    return res.status(400).send({ error: "Please provide valid startTime and endTime in HH:mm format." });
+  }
+
+  const now = new Date();
+  const [startHour, startMinute] = startTime.split(":").map(Number);
+  const [endHour, endMinute] = endTime.split(":").map(Number);
+
+  const startTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, startMinute).getTime();
+
+  const endTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHour, endMinute).getTime();
+
+  if (endTimestamp <= now.getTime()) {
+    return res.status(400).send({ error: "End time must be in the future." });
+  }
+  if (startTimestamp >= endTimestamp) {
+    return res.status(400).send({ error: "Start time must be earlier than end time." });
+  }
+
+  console.log(`Functions scheduled to start at ${startTime} and stop at ${endTime}.`);
+
+  const startTask = setTimeout(async () => {
+    console.log("Starting Oracle and Uploader functions...");
+    try {
+      await Promise.all([
+        oracleFunction({ stopTime: new Date(endTimestamp).toISOString() }),
+        uploaderFunction({ stopTime: new Date(endTimestamp).toISOString() }),
+      ]);
+      console.log("Both functions completed their execution.");
+    } catch (error) {
+      console.error("Error during function execution:", error);
     }
+  }, startTimestamp - now.getTime());
 
-    const now = new Date();
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
+  runningTasks.push(startTask);
 
-    const startTimestamp = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        startHour,
-        startMinute
-    ).getTime();
-
-    const endTimestamp = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        endHour,
-        endMinute
-    ).getTime();
-
-    if (endTimestamp <= now.getTime()) {
-        return res.status(400).send({ error: 'End time must be in the future.' });
-    }
-    if (startTimestamp >= endTimestamp) {
-        return res.status(400).send({ error: 'Start time must be earlier than end time.' });
-    }
-
-    console.log(`Functions scheduled to start at ${startTime} and stop at ${endTime}.`);
-
- 
-    const startTask = setTimeout(async () => {
-        console.log('Starting Oracle and Uploader functions...');
-        try {
-            await Promise.all([
-                oracleFunction({ stopTime: new Date(endTimestamp).toISOString() }),
-                uploaderFunction({ stopTime: new Date(endTimestamp).toISOString() }),
-            ]);
-            console.log('Both functions completed their execution.');
-        } catch (error) {
-            console.error('Error during function execution:', error);
-        }
-    }, startTimestamp - now.getTime());
-
-    runningTasks.push(startTask);
-
-    res.status(200).send({
-        message: `Functions scheduled successfully. Start time: ${startTime}, End time: ${endTime}.`,
-    });
+  res.status(200).send({
+    message: `Functions scheduled successfully. Start time: ${startTime}, End time: ${endTime}.`,
+  });
 });
 
 /**
  * Stop all running tasks
  */
-app.post('/stop/all', (req, res) => {
-    runningTasks.forEach(task => clearTimeout(task));
-    runningTasks = [];
-    console.log('All tasks stopped successfully.');
-    res.status(200).send({ message: 'All tasks stopped successfully.' });
+app.post("/stop/all", (req, res) => {
+  runningTasks.forEach((task) => clearTimeout(task));
+  runningTasks = [];
+  console.log("All tasks stopped successfully.");
+  res.status(200).send({ message: "All tasks stopped successfully." });
 });
 
 /**
@@ -130,19 +117,19 @@ app.post('/stop/all', (req, res) => {
  *       200:
  *         description: Server is shutting down.
  */
-app.post('/shutdown', (req, res) => {
-    console.log('Shutting down server...');
-    runningTasks.forEach(task => clearTimeout(task));
-    runningTasks = [];
-    res.status(200).send({ message: 'Server is shutting down.' });
+app.post("/shutdown", (req, res) => {
+  console.log("Shutting down server...");
+  runningTasks.forEach((task) => clearTimeout(task));
+  runningTasks = [];
+  res.status(200).send({ message: "Server is shutting down." });
 
-    setTimeout(() => {
-        process.exit(0);
-    }, 1000);
+  setTimeout(() => {
+    process.exit(0);
+  }, 1000);
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10002;
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`SwaggerUI running at http://localhost:${PORT}/api-docs`);
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`SwaggerUI running at http://localhost:${PORT}/api-docs`);
 });
