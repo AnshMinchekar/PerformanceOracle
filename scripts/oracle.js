@@ -45,6 +45,12 @@ async function oracleFunction({ stopTime }) {
 
   const stopTimestamp = new Date(stopTime).getTime();
 
+  const folderPath = path.join(__dirname, "../data");
+  const filePath = path.join(folderPath, "eventsData.json");
+
+
+  ensureFileExists(filePath);
+
   console.log(`Listening for events from multiple contracts...`);
 
   for (const { address, abi } of contracts) {
@@ -97,22 +103,42 @@ async function oracleFunction({ stopTime }) {
     });
   }
 
-  async function writeEventToFile(eventData) {
-    const filePath = "eventsData.json";
+  function ensureFileExists(filePath) {
+    const folderPath = path.dirname(filePath);
+
+    if (!fs.existsSync(folderPath)) {
+        console.log(`Creating root folder: ${folderPath}`);
+        fs.mkdirSync(folderPath, { recursive: true });
+    }
+
+    if (!fs.existsSync(filePath)) {
+        console.log(`Creating file in root: ${filePath}`);
+        fs.writeFileSync(filePath, "[]", "utf8");
+    }
+}
+
+
+async function writeEventToFile(filePath, eventData) {
     let existingData = [];
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf8");
-      try {
-        existingData = JSON.parse(data);
-      } catch (error) {
-        console.error("Error parsing the event data file:", error);
-      }
+
+    try {
+        if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, "utf8");
+            existingData = JSON.parse(data);
+        }
+    } catch (error) {
+        console.error("Error reading or parsing eventsData.json:", error);
+        existingData = [];
     }
 
     existingData.push(eventData);
-    fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), "utf8");
-    console.log(`Event data written to ${filePath}`);
+
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), "utf8");
+        console.log(`Event data successfully written to ${filePath}`);
+    } catch (error) {
+        console.error("Error writing to eventsData.json:", error);
+    }
   }
 }
-
 module.exports = { oracleFunction };

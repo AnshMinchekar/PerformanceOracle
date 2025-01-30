@@ -77,9 +77,7 @@ async function uploaderFunction({ stopTime }) {
                     await writeApi.close();
                     console.log(`Successfully uploaded ${metrics.length} metrics to InfluxDB.`);
                 }
-            } else {
-                console.log("Waiting for eventsData.json to be created...");
-            }
+            } 
         } catch (error) {
             console.error("Error while processing the file:", error);
         }
