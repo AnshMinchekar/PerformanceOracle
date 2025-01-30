@@ -1,9 +1,9 @@
 require("dotenv").config();
+const { ethers } = require("hardhat");
+const fs = require("fs");
+const path = require("path"); // Add this line
 
 async function oracleFunction({ stopTime }) {
-  const { ethers } = require("hardhat");
-  const fs = require("fs");
-
   const rpcUrl = process.env.RPCUrl;
   const convRate = parseFloat(process.env.ConvRate);
   const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
