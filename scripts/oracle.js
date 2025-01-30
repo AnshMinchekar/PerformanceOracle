@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { ethers } = require("hardhat");
 const fs = require("fs");
-const path = require("path"); // Add this line
+const path = require("path");
 
 async function oracleFunction({ stopTime }) {
   const rpcUrl = process.env.RPCUrl;
@@ -111,6 +111,7 @@ async function oracleFunction({ stopTime }) {
 
     existingData.push(eventData);
     fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), "utf8");
+    console.log(`Event data written to ${filePath}`);
   }
 }
 
