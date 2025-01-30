@@ -1,12 +1,48 @@
+process.env.TZ = "Europe/Berlin";
+console.log("=====================================");
+console.log("Timezone set to:", process.env.TZ);
+console.log("=====================================");
+
 const express = require("express");
+const helmet = require("helmet");
+const morgan = require("morgan");
+
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsDoc = require("swagger-jsdoc");
 const { oracleFunction } = require("./scripts/oracle");
 const { uploaderFunction } = require("./scripts/uploader");
+const gracefulShutdown = require("./utils/gracefulShutdown");
+const rateLimiter = require("./middleware/rateLimiter");
+const errorHandler = require("./middleware/errorHandler");
+const logger = require("./utils/logger");
+
 require("dotenv-safe").config();
 
 const app = express();
+
+// Middleware
+app.use(helmet());
+
+// Define custom morgan format
+morgan.token("route", (req) => req.originalUrl);
+morgan.token("status", (req, res) => res.statusCode);
+morgan.token("response-time", (req, res) => {
+  const diff = process.hrtime(req._startAt);
+  const time = diff[0] * 1e3 + diff[1] * 1e-6;
+  return time.toFixed(3);
+});
+
+app.use(
+  morgan(":method :route :status :response-time ms", {
+    stream: {
+      write: (message) => logger.info(message.trim()),
+    },
+  })
+);
+
 app.use(express.json());
+app.use(rateLimiter);
+app.use(errorHandler);
 
 let runningTasks = [];
 
@@ -129,7 +165,10 @@ app.post("/shutdown", (req, res) => {
 });
 
 const PORT = process.env.PORT || 10002;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`SwaggerUI running at http://localhost:${PORT}/api-docs`);
 });
+
+process.on("SIGTERM", gracefulShutdown(server));
+process.on("SIGINT", gracefulShutdown(server));
