@@ -8,18 +8,30 @@ async function oracleFunction({ stopTime }) {
   const convRate = parseFloat(process.env.ConvRate);
   const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
+  function loadABI(contractName) {
+    const abiPath = path.join(__dirname, "contracts", "abis", `${contractName}.json`);
+    if (fs.existsSync(abiPath)) {
+      const abiJson = fs.readFileSync(abiPath, "utf8");
+      const abiObject = JSON.parse(abiJson);
+      const abi = abiObject.abi; // Access the abi property
+      return abi;
+    } else {
+      throw new Error(`ABI file for ${contractName} not found at ${abiPath}`);
+    }
+  }
+
   const contracts = [
     {
-      address: process.env.conAdd_1,
-      abi: require("./Path to ABI"),
+      address: process.env.CONTRACT_ORACLE_REGISTRY_ADDRESS,
+      abi: loadABI(process.env.CONTRACT_ORACLE_REGISTRY),
     },
     {
-      address: process.env.conAdd_2,
-      abi: require("./Path to ABI"),
+      address: process.env.CONTRACT_DID_REGISTRY_ADDRESS,
+      abi: loadABI(process.env.CONTRACT_DID_REGISTRY),
     },
     {
-      address: process.env.conAdd_3,
-      abi: require("./Path to ABI"),
+      address: process.env.CONTRACT_ASSET_DNFT_ADDRESS,
+      abi: loadABI(process.env.CONTRACT_ASSET_DNFT),
     },
   ];
 
