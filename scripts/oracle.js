@@ -92,7 +92,7 @@ async function oracleFunction({ stopTime }) {
       console.log(`Event Detected from contract ${address}: ${event.event}`);
       console.log("Details:", eventDetails);
 
-      await writeEventToFile(eventDetails);
+      await writeEventToFile(filePath, eventDetails);
 
       if (Date.now() >= stopTimestamp) {
         console.log(`Stopping Oracle Function for contract ${address}...`);
