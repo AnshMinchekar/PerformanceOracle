@@ -11,6 +11,14 @@ async function uploaderFunction({ stopTime }) {
     const bucket = process.env.IDB_BUCKET;
     const org = process.env.IDB_ORG;
 
+    try {
+        const health = await influxDB.ping();
+        console.log("InfluxDB Connection:", health ? "Connected" : "Failed to connect");
+    } catch (error) {
+        console.error("Failed to connect to InfluxDB:", error);
+        return;
+    }
+
     const filePath = 'eventsData.json'; 
     let lastModifiedTime = null;
 
