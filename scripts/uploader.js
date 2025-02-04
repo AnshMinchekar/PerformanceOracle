@@ -14,10 +14,10 @@ async function uploaderFunction({ stopTime }) {
 
     async function checkInfluxDBConnection() {
         const queryApi = influxDB.getQueryApi(org);
-        const query = `buckets()`; // Fetch bucket info
+        const query = `buckets()`; 
     
         try {
-            await queryApi.collectRows(query); // Just execute it, no need to store the result
+            await queryApi.collectRows(query);
             console.log("InfluxDB Connection: Successful");
         } catch (error) {
             console.error("Failed to connect to InfluxDB:", error);
@@ -25,7 +25,7 @@ async function uploaderFunction({ stopTime }) {
     }
     checkInfluxDBConnection();
 
-    const filePath = 'eventsData.json'; 
+    const filePath = '../data/eventsData.json';
     let lastModifiedTime = null;
 
     console.log("Uploader Function started.");
