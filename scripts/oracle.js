@@ -95,6 +95,8 @@ async function oracleFunction({ stopTime }) {
       console.log(`Event Detected from contract ${address}: ${event.event}`);
       console.log("Details:", eventDetails);
 
+      // await writeEventToInfluxDB(eventDetails); goes here
+
       await writeEventToFile(filePath, eventDetails);
 
       if (Date.now() >= stopTimestamp) {
