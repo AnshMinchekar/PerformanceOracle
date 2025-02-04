@@ -1,6 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
+const { QueryApi } = require('@influxdata/influxdb-client');
 
 async function uploaderFunction({ stopTime }) {
     const influxDB = new InfluxDB({
@@ -11,13 +12,18 @@ async function uploaderFunction({ stopTime }) {
     const bucket = process.env.IDB_BUCKET;
     const org = process.env.IDB_ORG;
 
-    try {
-        const health = await influxDB.ping();
-        console.log("InfluxDB Connection:", health ? "Connected" : "Failed to connect");
-    } catch (error) {
-        console.error("Failed to connect to InfluxDB:", error);
-        return;
+    async function checkInfluxDBConnection() {
+        const queryApi = influxDB.getQueryApi(org);
+        const query = `buckets()`; // Fetch bucket info
+    
+        try {
+            await queryApi.collectRows(query); // Just execute it, no need to store the result
+            console.log("InfluxDB Connection: Successful");
+        } catch (error) {
+            console.error("Failed to connect to InfluxDB:", error);
+        }
     }
+    checkInfluxDBConnection();
 
     const filePath = 'eventsData.json'; 
     let lastModifiedTime = null;

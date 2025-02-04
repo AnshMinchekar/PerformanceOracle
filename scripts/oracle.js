@@ -22,14 +22,17 @@ async function oracleFunction({ stopTime }) {
 
   const contracts = [
     {
+      contractName: process.env.CONTRACT_ORACLE_REGISTRY,
       address: process.env.CONTRACT_ORACLE_REGISTRY_ADDRESS,
       abi: loadABI(process.env.CONTRACT_ORACLE_REGISTRY),
     },
     {
+      contractName: process.env.CONTRACT_DID_REGISTRY,
       address: process.env.CONTRACT_DID_REGISTRY_ADDRESS,
       abi: loadABI(process.env.CONTRACT_DID_REGISTRY),
     },
     {
+      contractName: process.env.CONTRACT_ASSET_DNFT,
       address: process.env.CONTRACT_ASSET_DNFT_ADDRESS,
       abi: loadABI(process.env.CONTRACT_ASSET_DNFT),
     },
@@ -51,10 +54,10 @@ async function oracleFunction({ stopTime }) {
 
   console.log(`Listening for events from multiple contracts...`);
 
-  for (const { address, abi } of contracts) {
+  for (const { contractName, address, abi } of contracts) {
     const contract = new ethers.Contract(address, abi, provider);
 
-    console.log(`Listening to contract: ${address}`);
+    console.log(`Listening to ${contractName} contract: ${address}`);
 
     contract.on("*", async (...args) => {
       totalTransactions++;
