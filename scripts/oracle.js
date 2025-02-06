@@ -2,6 +2,7 @@ require("dotenv").config();
 const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
+const { uploadMetrics } = require("../scripts/uploader");
 
 async function oracleFunction({ stopTime }) {
   const rpcUrl = process.env.RPCUrl;
@@ -13,7 +14,7 @@ async function oracleFunction({ stopTime }) {
     if (fs.existsSync(abiPath)) {
       const abiJson = fs.readFileSync(abiPath, "utf8");
       const abiObject = JSON.parse(abiJson);
-      const abi = abiObject.abi; // Access the abi property
+      const abi = abiObject.abi; 
       return abi;
     } else {
       throw new Error(`ABI file for ${contractName} not found at ${abiPath}`);
@@ -95,7 +96,7 @@ async function oracleFunction({ stopTime }) {
       console.log(`Event Detected from contract ${address}: ${event.event}`);
       console.log("Details:", eventDetails);
 
-      // await writeEventToInfluxDB(eventDetails); goes here
+      await uploadMetrics(eventDetails); 
 
       await writeEventToFile(filePath, eventDetails);
 

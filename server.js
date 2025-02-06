@@ -10,7 +10,7 @@ const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsDoc = require("swagger-jsdoc");
 const { oracleFunction } = require("./scripts/oracle");
-const { uploaderFunction } = require("./scripts/uploader");
+const { checkInfluxDBConnection } = require("./scripts/dbconnect");
 const gracefulShutdown = require("./utils/gracefulShutdown");
 const rateLimiter = require("./middleware/rateLimiter");
 const errorHandler = require("./middleware/errorHandler");
@@ -44,6 +44,9 @@ app.use(express.json());
 app.use(rateLimiter);
 app.use(errorHandler);
 
+//Check InfluxDB connection
+checkInfluxDBConnection();
+
 let runningTasks = [];
 
 const swaggerOptions = {
@@ -70,7 +73,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
  * @swagger
  * /run/schedule:
  *   post:
- *     summary: Schedule Oracle and Uploader functions to start and stop at specific times
+ *     summary: Schedule Oracle functions to start and stop at specific times
  *     parameters:
  *       - name: startTime
  *         in: query
@@ -112,25 +115,24 @@ app.post("/run/schedule", (req, res) => {
     return res.status(400).send({ error: "Start time must be earlier than end time." });
   }
 
-  console.log(`Functions scheduled to start at ${startTime} and stop at ${endTime}.`);
+  console.log(`Performance Oracle scheduled to start at ${startTime} and stop at ${endTime}.`);
 
   const startTask = setTimeout(async () => {
-    console.log("Starting Oracle and Uploader functions...");
+    console.log("Starting Performance Oracle...");
     try {
       await Promise.all([
         oracleFunction({ stopTime: new Date(endTimestamp).toISOString() }),
-        uploaderFunction({ stopTime: new Date(endTimestamp).toISOString() }),
       ]);
-      console.log("Both functions completed their execution.");
+      console.log("Performance Oracle shutting down.");
     } catch (error) {
-      console.error("Error during function execution:", error);
+      console.error("Error starting Performance Oracle:", error);
     }
   }, startTimestamp - now.getTime());
 
   runningTasks.push(startTask);
 
   res.status(200).send({
-    message: `Functions scheduled successfully. Start time: ${startTime}, End time: ${endTime}.`,
+    message: `Performance Oracle scheduled successfully. Start time: ${startTime}, End time: ${endTime}.`,
   });
 });
 
@@ -140,8 +142,8 @@ app.post("/run/schedule", (req, res) => {
 app.post("/stop/all", (req, res) => {
   runningTasks.forEach((task) => clearTimeout(task));
   runningTasks = [];
-  console.log("All tasks stopped successfully.");
-  res.status(200).send({ message: "All tasks stopped successfully." });
+  console.log("All services stopped successfully.");
+  res.status(200).send({ message: "All services stopped successfully." });
 });
 
 /**
