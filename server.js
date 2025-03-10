@@ -120,14 +120,18 @@ app.post("/run/schedule", (req, res) => {
   const startTask = setTimeout(async () => {
     console.log("Starting Performance Oracle...");
     try {
-      await Promise.all([
-        oracleFunction({ stopTime: new Date(endTimestamp).toISOString() }),
-      ]);
-      console.log("Performance Oracle shutting down.");
+        await oracleFunction({ stopTime: new Date(endTimestamp).toISOString() });
+
+        console.log("Waiting for Performance Oracle to finish...");
+        await new Promise(resolve => setTimeout(resolve, endTimestamp - Date.now()));
+
+        console.log("Performance Oracle shutting down.");
+        process.exit(0);
+
     } catch (error) {
-      console.error("Error starting Performance Oracle:", error);
+        console.error("Error starting Performance Oracle:", error);
     }
-  }, startTimestamp - now.getTime());
+}, startTimestamp - now.getTime());
 
   runningTasks.push(startTask);
 

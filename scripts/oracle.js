@@ -77,6 +77,8 @@ async function oracleFunction({ stopTime }) {
       seenEvents.add(eventIdentifier);
 
       const receipt = await provider.getTransactionReceipt(transactionHash);
+      const tx = await provider.getTransaction(transactionHash);
+      
       const block = await provider.getBlock(receipt.blockNumber);
       const blockTimestamp = new Date(block.timestamp * 1000).toISOString();
 
