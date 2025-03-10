@@ -35,7 +35,7 @@ async function uploadMetrics(eventDetails) {
             .floatField('avgGasPriceInUSD', avgGasPriceInUSD)
             .intField('Block Number', eventDetails.blockNumber)
             .intField('totalEvents', eventDetails.totalEvents)
-            .intField('totalTransactions', totalTransactions)
+            .intField('totalTransactions', eventDetails.totalTransactions);
 
         writeApi.writePoint(point);
         await writeApi.close();
