@@ -1,3 +1,4 @@
+process.env.TZ = "Europe/Berlin";
 require("dotenv").config();
 const { ethers } = require("hardhat");
 const fs = require("fs");
@@ -47,6 +48,9 @@ async function oracleFunction({ stopTime }) {
 
   let totalTransactions = 0;
 
+  const seenTransactions = new Set();
+  const seenEvents = new Set();
+
   const stopTimestamp = new Date(stopTime).getTime();
 
   const filePath = path.join(__dirname, "../data/eventsData.json");
@@ -61,16 +65,20 @@ async function oracleFunction({ stopTime }) {
     console.log(`Listening to ${contractName} contract: ${address}`);
 
     contract.on("*", async (...args) => {
-      totalTransactions++;
+     const event = args[args.length - 1];
+     const transactionHash = event.transactionHash;
+     const eventIdentifier = `${transactionHash}-${event.event}`;
+     if (!seenTransactions.has(transactionHash)) {
+      seenTransactions.add(transactionHash);
+      totalTransactions++; 
+      }
 
-      const event = args[args.length - 1];
-      const transactionHash = event.transactionHash;
+    if (!seenEvents.has(eventIdentifier)) {
+      seenEvents.add(eventIdentifier);
 
-      const block = await provider.getBlock(event.blockNumber);
-      const blockTimestamp = new Date(block.timestamp * 1000).toISOString();
-
-      const tx = await provider.getTransaction(transactionHash);
       const receipt = await provider.getTransactionReceipt(transactionHash);
+      const block = await provider.getBlock(receipt.blockNumber);
+      const blockTimestamp = new Date(block.timestamp * 1000).toISOString();
 
       const gasUsed = receipt.gasUsed.toString();
       const gasPrice = tx.gasPrice.toString();
@@ -99,6 +107,7 @@ async function oracleFunction({ stopTime }) {
       await uploadMetrics(eventDetails); 
 
       await writeEventToFile(filePath, eventDetails);
+    }
 
       if (Date.now() >= stopTimestamp) {
         console.log(`Stopping Oracle Function for contract ${address}...`);

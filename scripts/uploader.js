@@ -24,7 +24,7 @@ async function uploadMetrics(eventDetails) {
             return;
         }
 
-        const point = new Point('performance_metrics')
+        const point = new Point('oracle_performance_metrics')
             .tag('contract', eventDetails.contract)
             .tag('txHash', eventDetails.transactionHash)
             .tag('eventName', eventDetails.eventName)
