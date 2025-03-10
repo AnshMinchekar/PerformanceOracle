@@ -6,7 +6,7 @@ async function uploadMetrics(eventDetails) {
     try {
         const writeApi = influxDB.getWriteApi(org, bucket);
 
-        console.log("Uploading metric to InfluxDB:", eventDetails);
+        console.log("Uploading metric to InfluxDB.");
 
         const gasUsed = parseFloat(eventDetails.gasUsed);
         const gasUsedInUSD = parseFloat(eventDetails.gasUsedInUSD);
@@ -33,12 +33,13 @@ async function uploadMetrics(eventDetails) {
             .floatField('gasUsedInUSD', gasUsedInUSD)
             .floatField('avgGasPrice', avgGasPrice)
             .floatField('avgGasPriceInUSD', avgGasPriceInUSD)
+            .intField('Block Number', eventDetails.blockNumber)
+            .intField('totalEvents', eventDetails.totalEvents)
             .intField('totalTransactions', totalTransactions)
-            .intField('eventsEmitted', eventDetails.eventArgs ? Object.keys(eventDetails.eventArgs).length : 0);
 
         writeApi.writePoint(point);
         await writeApi.close();
-        console.log(`Successfully uploaded transaction: ${eventDetails.transactionHash} metrics to InfluxDB.`);
+        console.log("Successfully uploaded transaction metrics to InfluxDB.");
     } catch (error) {
         console.error("Error uploading transaction metrics to InfluxDB:", error);
     }
