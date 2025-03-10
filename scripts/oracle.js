@@ -43,7 +43,6 @@ async function oracleFunction({ stopTime }) {
     let totalTransactions = 0;
     let totalEvents = 0;
 
-    const seenTransactions = new Set();
     const seenEvents = new Set();
 
     const stopTimestamp = new Date(stopTime).getTime();
@@ -69,8 +68,10 @@ async function oracleFunction({ stopTime }) {
             for (const { address, abi, contractName } of contracts) {
                 if (tx.to && tx.to.toLowerCase() === address) {
                     const transactionHash = tx.hash;
-                    
-                        totalTransactions++;
+
+                    totalTransactions++;
+                    const currentTransactionCount = totalTransactions;
+
 
                         const receipt = await provider.getTransactionReceipt(transactionHash);
                         const blockTimestamp = new Date((await provider.getBlock(receipt.blockNumber)).timestamp * 1000).toISOString();
@@ -93,7 +94,7 @@ async function oracleFunction({ stopTime }) {
                             gasUsedInUSD,
                             gasPrice: gasPriceInETH,
                             gasPriceInUSD,
-                            totalTransactions,
+                            totalTransactions: currentTransactionCount,
                             totalEvents,
                         };
 
@@ -121,7 +122,7 @@ async function oracleFunction({ stopTime }) {
                         }
 
                         console.log(`Transaction Processed: ${transactionHash}`);
-                        console.log(`Total Transactions: ${totalTransactions}, Total Events: ${totalEvents}`);
+                        console.log(`Total Transactions: ${currentTransactionCount}, Total Events: ${totalEvents}`);
 
                         await uploadMetrics(eventDetails);
                         await writeEventToFile(filePath, eventDetails);
