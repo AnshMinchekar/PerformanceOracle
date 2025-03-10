@@ -69,9 +69,7 @@ async function oracleFunction({ stopTime }) {
             for (const { address, abi, contractName } of contracts) {
                 if (tx.to && tx.to.toLowerCase() === address) {
                     const transactionHash = tx.hash;
-
-                    if (!seenTransactions.has(transactionHash)) {
-                        seenTransactions.add(transactionHash);
+                    
                         totalTransactions++;
 
                         const receipt = await provider.getTransactionReceipt(transactionHash);
@@ -127,7 +125,6 @@ async function oracleFunction({ stopTime }) {
 
                         await uploadMetrics(eventDetails);
                         await writeEventToFile(filePath, eventDetails);
-                    }
                 }
             }
         }
