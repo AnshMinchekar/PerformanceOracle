@@ -43,6 +43,8 @@ async function oracleFunction({ stopTime }) {
     let totalTransactions = 0;
     let totalEvents = 0;
 
+    const seenTransactions = new Set();
+    
     const seenEvents = new Set();
 
     const stopTimestamp = new Date(stopTime).getTime();
@@ -69,8 +71,9 @@ async function oracleFunction({ stopTime }) {
                 if (tx.to && tx.to.toLowerCase() === address) {
                     const transactionHash = tx.hash;
 
-                    totalTransactions++;
-                    const currentTransactionCount = totalTransactions;
+                    if (!seenTransactions.has(tx.hash)) {
+                        seenTransactions.add(tx.hash);
+                        totalTransactions++;
 
 
                         const receipt = await provider.getTransactionReceipt(transactionHash);
@@ -94,7 +97,7 @@ async function oracleFunction({ stopTime }) {
                             gasUsedInUSD,
                             gasPrice: gasPriceInETH,
                             gasPriceInUSD,
-                            totalTransactions: currentTransactionCount,
+                            totalTransactions: totalTransactions,
                             totalEvents,
                         };
 
@@ -129,7 +132,8 @@ async function oracleFunction({ stopTime }) {
                 }
             }
         }
-    });
+    }
+});
 
     function ensureFileExists(filePath) {
         if (!fs.existsSync(filePath)) {
