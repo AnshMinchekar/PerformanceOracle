@@ -63,13 +63,10 @@ async function oracleFunction({ stopTime }) {
   };
 
   // Track transaction processing order and counts
-  const processOrder = new Map(); // Change to Map for better lookup
+  const processOrder = new Map();
 
   const seenTransactions = new Set();
   const seenEvents = new Set();
-
-  // Store transaction timestamps to calculate confirmation times
-  const pendingTransactions = new Map();
 
   const stopTimestamp = new Date(stopTime).getTime();
 
@@ -79,26 +76,16 @@ async function oracleFunction({ stopTime }) {
 
   console.log("Listening for transactions from multiple contracts...");
 
-  // Track all pending transactions
-  provider.on("pending", (txHash) => {
-    if (!pendingTransactions.has(txHash)) {
-      pendingTransactions.set(txHash, Date.now());
-      console.log(`Pending transaction detected: ${txHash}`);
-    }
-  });
-
   provider.on("block", async (blockNumber) => {
     try {
       if (Date.now() >= stopTimestamp) {
         console.log("Stopping Oracle function.");
         provider.removeAllListeners("block");
-        provider.removeAllListeners("pending");
         return;
       }
 
       console.log(`Scanning transactions in block number: ${blockNumber}`);
       const block = await provider.getBlockWithTransactions(blockNumber);
-      const blockTimestampMs = block.timestamp * 1000;
 
       // First pass: detect all transactions in this block and record their sequential order
       for (const tx of block.transactions) {
@@ -145,29 +132,6 @@ async function oracleFunction({ stopTime }) {
                 (await provider.getBlock(receipt.blockNumber)).timestamp * 1000
               ).toISOString();
 
-              // Calculate block confirmation time
-              let confirmationTime = null;
-              if (pendingTransactions.has(transactionHash)) {
-                confirmationTime = Date.now() - pendingTransactions.get(transactionHash);
-                pendingTransactions.delete(transactionHash); // Clean up
-                console.log(`Transaction ${transactionHash} confirmed after ${confirmationTime} ms`);
-              } else {
-                // Fallback: Calculate confirmation time using block timestamp
-                const currentTime = Date.now();
-                confirmationTime = currentTime - blockTimestampMs;
-                console.log(
-                  `Using block timestamp for confirmation time: ${confirmationTime} ms for tx: ${transactionHash}`
-                );
-              }
-
-              // Ensure confirmation time is not negative
-              if (confirmationTime < 0) {
-                console.warn(
-                  `Negative confirmation time detected (${confirmationTime}ms) for ${transactionHash}, adjusting to 0`
-                );
-                confirmationTime = 0;
-              }
-
               const gasUsed = receipt.gasUsed.toString();
               const gasPrice = tx.gasPrice.toString();
               const gasUsedInETH = ethers.utils.formatEther(gasUsed);
@@ -186,8 +150,7 @@ async function oracleFunction({ stopTime }) {
                 gasUsedInUSD,
                 gasPrice: gasPriceInETH,
                 gasPriceInUSD,
-                confirmationTime: confirmationTime,
-                totalTransactions: txSequenceNumber, // Use the sequence number
+                totalTransactions: txSequenceNumber,
                 totalEvents: counters.events,
               };
 
@@ -226,9 +189,6 @@ async function oracleFunction({ stopTime }) {
 
               console.log(`Transaction Processed: ${transactionHash}`);
               console.log(`Total Transactions: ${txSequenceNumber}, Total Events: ${eventDetails.totalEvents}`);
-              if (confirmationTime !== null) {
-                console.log(`Block Confirmation Time: ${confirmationTime} ms`);
-              }
 
               await uploadMetrics(eventDetails);
               await writeEventToFile(filePath, eventDetails);
