@@ -2,6 +2,39 @@ require("dotenv").config();
 const { Point } = require("@influxdata/influxdb-client");
 const { influxDB, bucket, org } = require("./dbconnect");
 
+// Add a new function to initialize counters at the start of testing
+async function initializeCounters(startTimestamp = new Date()) {
+  try {
+    const writeApi = influxDB.getWriteApi(org, bucket);
+    console.log("Initializing counters in InfluxDB with zero values...");
+
+    const timestamp = new Date(startTimestamp);
+
+    // Initialize transaction counter with zero
+    const txCounterPoint = new Point("transaction_counter")
+      .tag("type", "cumulative")
+      .tag("status", "initialized")
+      .timestamp(timestamp)
+      .intField("value", 0);
+
+    // Initialize event counter with zero
+    const eventCounterPoint = new Point("event_counter")
+      .tag("type", "cumulative")
+      .tag("status", "initialized")
+      .timestamp(timestamp)
+      .intField("value", 0);
+
+    // Write initialization points
+    writeApi.writePoint(txCounterPoint);
+    writeApi.writePoint(eventCounterPoint);
+
+    await writeApi.close();
+    console.log("Successfully initialized counter metrics in InfluxDB with zero values");
+  } catch (error) {
+    console.error("Error initializing counters in InfluxDB:", error);
+  }
+}
+
 async function uploadMetrics(eventDetails) {
   try {
     const writeApi = influxDB.getWriteApi(org, bucket);
@@ -37,13 +70,13 @@ async function uploadMetrics(eventDetails) {
       .intField("totalTransactions", totalTransactions);
 
     // Transaction counter time series point - using the exact same timestamp as the event
-    const txCounterPoint = new Point("EVM-transaction_counter")
+    const txCounterPoint = new Point("transaction_counter")
       .tag("type", "cumulative")
       .timestamp(timestamp)
       .intField("value", totalTransactions);
 
     // Event counter time series point - using the exact same timestamp as the event
-    const eventCounterPoint = new Point("EVM-event_counter")
+    const eventCounterPoint = new Point("event_counter")
       .tag("type", "cumulative")
       .timestamp(timestamp)
       .intField("value", totalEvents);
@@ -62,4 +95,4 @@ async function uploadMetrics(eventDetails) {
   }
 }
 
-module.exports = { uploadMetrics };
+module.exports = { uploadMetrics, initializeCounters };
