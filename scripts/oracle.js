@@ -97,8 +97,9 @@ async function oracleFunction({ stopTime }) {
               gasUsedInUSD,
               gasPrice: gasPriceInETH,
               gasPriceInUSD,
+              // Record the current state of the counters when this specific event is processed
               totalTransactions: totalTransactions,
-              totalEvents,
+              totalEvents: totalEvents, // This will be updated if events are found
             };
 
             if (receipt.logs.length > 0) {
@@ -112,6 +113,8 @@ async function oracleFunction({ stopTime }) {
                   if (!seenEvents.has(eventIdentifier)) {
                     seenEvents.add(eventIdentifier);
                     totalEvents++;
+                    // Update the totalEvents count in the eventDetails after incrementing
+                    eventDetails.totalEvents = totalEvents;
 
                     eventDetails.eventName = parsedEvent.name;
                     eventDetails.eventArgs = parsedEvent.args;
