@@ -3,7 +3,7 @@ require("dotenv").config();
 const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
-const { uploadMetrics } = require("../scripts/uploader");
+const { uploadMetrics, initializeCounters } = require("../scripts/uploader");
 
 async function oracleFunction({ stopTime, outputFileName }) {
   const rpcUrl = process.env.RPCUrl;
@@ -73,6 +73,11 @@ async function oracleFunction({ stopTime, outputFileName }) {
   const filePath = path.join(__dirname, "../data", outputFileName);
 
   ensureFileExists(filePath);
+
+  // Initialize InfluxDB counters with zero values at the start of monitoring
+  const startTime = new Date();
+  console.log(`Initializing counters in InfluxDB at ${startTime.toISOString()}`);
+  await initializeCounters(startTime);
 
   console.log("Listening for transactions from multiple contracts...");
 
