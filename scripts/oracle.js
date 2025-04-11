@@ -76,10 +76,13 @@ async function oracleFunction({ stopTime, outputFileName }) {
 
   console.log("Listening for transactions from multiple contracts...");
 
+  // Create a flag to track if monitoring should continue
+  let shouldContinueMonitoring = true;
+
   provider.on("block", async (blockNumber) => {
     try {
-      if (Date.now() >= stopTimestamp) {
-        console.log("Stopping Oracle function.");
+      if (Date.now() >= stopTimestamp || !shouldContinueMonitoring) {
+        console.log("Stopping Oracle function monitoring.");
         provider.removeAllListeners("block");
         return;
       }
@@ -239,6 +242,17 @@ async function oracleFunction({ stopTime, outputFileName }) {
       console.error("Error writing to Events Data .json:", error);
     }
   }
+
+  // Return cleanup function that will stop monitoring without exiting the process
+  return function cleanup() {
+    console.log("Oracle cleanup function called. Stopping monitoring...");
+    shouldContinueMonitoring = false;
+    provider.removeAllListeners("block");
+
+    // Log final statistics
+    console.log(`Oracle monitoring stopped. Data saved to ${filePath}`);
+    console.log(`Final statistics: ${counters.transactions} transactions, ${counters.events} events processed`);
+  };
 }
 
 module.exports = { oracleFunction };

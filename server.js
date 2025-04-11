@@ -163,18 +163,24 @@ app.post("/run/schedule", (req, res) => {
       // Allow some time for event listeners to be properly set up
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      await oracleFunction({
+      // Modified to store the provider cleanup function
+      const cleanup = await oracleFunction({
         stopTime: new Date(endTimestamp).toISOString(),
         outputFileName: fileName,
       });
 
       console.log("Performance Oracle active and monitoring transactions");
 
-      // Wait until the end time
-      await new Promise((resolve) => setTimeout(resolve, endTimestamp - Date.now()));
+      // Wait until the end time, then stop monitoring but don't exit
+      const endTask = setTimeout(() => {
+        console.log("Performance Oracle stopping recording...");
+        if (typeof cleanup === "function") {
+          cleanup();
+          console.log("Performance Oracle has stopped recording and returned to idle mode.");
+        }
+      }, endTimestamp - Date.now());
 
-      console.log("Performance Oracle shutting down.");
-      process.exit(0);
+      runningTasks.push(endTask);
     } catch (error) {
       console.error("Error starting Performance Oracle:", error);
     }
