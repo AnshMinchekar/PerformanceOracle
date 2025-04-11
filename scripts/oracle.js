@@ -44,8 +44,10 @@ async function oracleFunction({ stopTime }) {
   let totalEvents = 0;
 
   const seenTransactions = new Set();
-
   const seenEvents = new Set();
+
+  // Store transaction timestamps to calculate confirmation times
+  const pendingTransactions = new Map();
 
   const stopTimestamp = new Date(stopTime).getTime();
 
@@ -55,10 +57,18 @@ async function oracleFunction({ stopTime }) {
 
   console.log("Listening for transactions from multiple contracts...");
 
+  // Track all pending transactions
+  provider.on("pending", (txHash) => {
+    if (!pendingTransactions.has(txHash)) {
+      pendingTransactions.set(txHash, Date.now());
+    }
+  });
+
   provider.on("block", async (blockNumber) => {
     if (Date.now() >= stopTimestamp) {
       console.log("Stopping Oracle function.");
       provider.removeAllListeners("block");
+      provider.removeAllListeners("pending");
       return;
     }
 
@@ -79,6 +89,13 @@ async function oracleFunction({ stopTime }) {
               (await provider.getBlock(receipt.blockNumber)).timestamp * 1000
             ).toISOString();
 
+            // Calculate block confirmation time
+            let confirmationTime = null;
+            if (pendingTransactions.has(transactionHash)) {
+              confirmationTime = Date.now() - pendingTransactions.get(transactionHash);
+              pendingTransactions.delete(transactionHash); // Clean up
+            }
+
             const gasUsed = receipt.gasUsed.toString();
             const gasPrice = tx.gasPrice.toString();
             const gasUsedInETH = ethers.utils.formatEther(gasUsed);
@@ -97,6 +114,7 @@ async function oracleFunction({ stopTime }) {
               gasUsedInUSD,
               gasPrice: gasPriceInETH,
               gasPriceInUSD,
+              confirmationTime: confirmationTime, // Add confirmation time to metrics
               // Record the current state of the counters when this specific event is processed
               totalTransactions: totalTransactions,
               totalEvents: totalEvents, // This will be updated if events are found
@@ -113,7 +131,6 @@ async function oracleFunction({ stopTime }) {
                   if (!seenEvents.has(eventIdentifier)) {
                     seenEvents.add(eventIdentifier);
                     totalEvents++;
-                    // Update the totalEvents count in the eventDetails after incrementing
                     eventDetails.totalEvents = totalEvents;
 
                     eventDetails.eventName = parsedEvent.name;
@@ -129,6 +146,9 @@ async function oracleFunction({ stopTime }) {
 
             console.log(`Transaction Processed: ${transactionHash}`);
             console.log(`Total Transactions: ${totalTransactions}, Total Events: ${totalEvents}`);
+            if (confirmationTime) {
+              console.log(`Block Confirmation Time: ${confirmationTime} ms`);
+            }
 
             await uploadMetrics(eventDetails);
             await writeEventToFile(filePath, eventDetails);
