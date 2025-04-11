@@ -62,6 +62,9 @@ async function oracleFunction({ stopTime }) {
     },
   };
 
+  // Track transaction processing order and counts
+  const processOrder = new Map(); // Change to Map for better lookup
+
   const seenTransactions = new Set();
   const seenEvents = new Set();
 
@@ -97,6 +100,24 @@ async function oracleFunction({ stopTime }) {
       const block = await provider.getBlockWithTransactions(blockNumber);
       const blockTimestampMs = block.timestamp * 1000;
 
+      // First pass: detect all transactions in this block and record their sequential order
+      for (const tx of block.transactions) {
+        for (const { address, contractName } of contracts) {
+          if (tx.to && tx.to.toLowerCase() === address) {
+            const transactionHash = tx.hash;
+            if (!processOrder.has(transactionHash)) {
+              const currentTxCount = counters.incrementTransactions();
+              processOrder.set(transactionHash, {
+                count: currentTxCount,
+                blockNumber,
+              });
+              console.log(`New transaction detected (total: ${currentTxCount}): ${transactionHash}`);
+            }
+          }
+        }
+      }
+
+      // Second pass: process details for each transaction
       for (const tx of block.transactions) {
         for (const { address, abi, contractName } of contracts) {
           if (tx.to && tx.to.toLowerCase() === address) {
@@ -104,8 +125,15 @@ async function oracleFunction({ stopTime }) {
 
             if (!seenTransactions.has(transactionHash)) {
               seenTransactions.add(transactionHash);
-              const currentTxCount = counters.incrementTransactions();
-              console.log(`New transaction detected (total: ${currentTxCount}): ${transactionHash}`);
+
+              // Get this transaction's sequence number from the processOrder map
+              if (!processOrder.has(transactionHash)) {
+                console.warn(`Warning: Transaction ${transactionHash} not found in processOrder map`);
+                continue;
+              }
+
+              const txSequenceNumber = processOrder.get(transactionHash).count;
+              console.log(`Processing transaction #${txSequenceNumber}: ${transactionHash}`);
 
               const receipt = await provider.getTransactionReceipt(transactionHash);
               if (!receipt) {
@@ -132,6 +160,14 @@ async function oracleFunction({ stopTime }) {
                 );
               }
 
+              // Ensure confirmation time is not negative
+              if (confirmationTime < 0) {
+                console.warn(
+                  `Negative confirmation time detected (${confirmationTime}ms) for ${transactionHash}, adjusting to 0`
+                );
+                confirmationTime = 0;
+              }
+
               const gasUsed = receipt.gasUsed.toString();
               const gasPrice = tx.gasPrice.toString();
               const gasUsedInETH = ethers.utils.formatEther(gasUsed);
@@ -151,7 +187,7 @@ async function oracleFunction({ stopTime }) {
                 gasPrice: gasPriceInETH,
                 gasPriceInUSD,
                 confirmationTime: confirmationTime,
-                totalTransactions: counters.transactions,
+                totalTransactions: txSequenceNumber, // Use the sequence number
                 totalEvents: counters.events,
               };
 
@@ -189,8 +225,8 @@ async function oracleFunction({ stopTime }) {
               }
 
               console.log(`Transaction Processed: ${transactionHash}`);
-              console.log(`Total Transactions: ${counters.transactions}, Total Events: ${counters.events}`);
-              if (confirmationTime) {
+              console.log(`Total Transactions: ${txSequenceNumber}, Total Events: ${eventDetails.totalEvents}`);
+              if (confirmationTime !== null) {
                 console.log(`Block Confirmation Time: ${confirmationTime} ms`);
               }
 
