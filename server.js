@@ -93,8 +93,38 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
  *       400:
  *         description: Invalid input or logical errors in time constraints
  */
+/**
+ * @swagger
+ * /run/schedule:
+ *   post:
+ *     summary: Schedule Oracle functions to start and stop at specific times
+ *     parameters:
+ *       - name: startTime
+ *         in: query
+ *         required: true
+ *         description: Start time in HH:mm format (24-hour clock)
+ *         schema:
+ *           type: string
+ *       - name: endTime
+ *         in: query
+ *         required: true
+ *         description: End time in HH:mm format (24-hour clock)
+ *         schema:
+ *           type: string
+ *       - name: testName
+ *         in: query
+ *         required: false
+ *         description: Test name to be included in the output filename
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Functions scheduled successfully
+ *       400:
+ *         description: Invalid input or logical errors in time constraints
+ */
 app.post("/run/schedule", (req, res) => {
-  const { startTime, endTime } = req.query;
+  const { startTime, endTime, testName } = req.query;
 
   if (!startTime || !endTime || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
     return res.status(400).send({ error: "Please provide valid startTime and endTime in HH:mm format." });
@@ -115,7 +145,14 @@ app.post("/run/schedule", (req, res) => {
     return res.status(400).send({ error: "Start time must be earlier than end time." });
   }
 
+  // Create timestamp in YYYY-MM-DD_HH-MM-SS format
+  const timestamp = now.toISOString().replace(/[T:]/g, "_").substring(0, 19);
+
+  // Generate filename based on testName and timestamp
+  const fileName = testName ? `${testName}_${timestamp}.json` : `oracle_performance_${timestamp}.json`;
+
   console.log(`Performance Oracle scheduled to start at ${startTime} and stop at ${endTime}.`);
+  console.log(`Output file will be saved as: ${fileName}`);
 
   const startTask = setTimeout(async () => {
     console.log("Starting Performance Oracle...");
@@ -126,7 +163,10 @@ app.post("/run/schedule", (req, res) => {
       // Allow some time for event listeners to be properly set up
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      await oracleFunction({ stopTime: new Date(endTimestamp).toISOString() });
+      await oracleFunction({
+        stopTime: new Date(endTimestamp).toISOString(),
+        outputFileName: fileName,
+      });
 
       console.log("Performance Oracle active and monitoring transactions");
 
@@ -144,6 +184,7 @@ app.post("/run/schedule", (req, res) => {
 
   res.status(200).send({
     message: `Performance Oracle scheduled successfully. Start time: ${startTime}, End time: ${endTime}.`,
+    fileName: fileName,
   });
 });
 

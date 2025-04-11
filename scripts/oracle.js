@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { uploadMetrics } = require("../scripts/uploader");
 
-async function oracleFunction({ stopTime }) {
+async function oracleFunction({ stopTime, outputFileName }) {
   const rpcUrl = process.env.RPCUrl;
   const convRate = parseFloat(process.env.ConvRate);
   const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
@@ -70,7 +70,7 @@ async function oracleFunction({ stopTime }) {
 
   const stopTimestamp = new Date(stopTime).getTime();
 
-  const filePath = path.join(__dirname, "../data/eventsData.json");
+  const filePath = path.join(__dirname, "../data", outputFileName);
 
   ensureFileExists(filePath);
 
@@ -225,7 +225,7 @@ async function oracleFunction({ stopTime }) {
         existingData = JSON.parse(data);
       }
     } catch (error) {
-      console.error("Error reading or parsing eventsData.json:", error);
+      console.error("Error reading or parsing Events Data .json:", error);
       existingData = [];
     }
 
@@ -235,7 +235,7 @@ async function oracleFunction({ stopTime }) {
       fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), "utf8");
       console.log(`Event data successfully written to ${filePath}`);
     } catch (error) {
-      console.error("Error writing to eventsData.json:", error);
+      console.error("Error writing to Events Data .json:", error);
     }
   }
 }
