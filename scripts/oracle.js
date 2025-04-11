@@ -150,6 +150,7 @@ async function oracleFunction({ stopTime, outputFileName }) {
                 gasUsedInUSD,
                 gasPrice: gasPriceInETH,
                 gasPriceInUSD,
+                usedETHPriceUSD: convRate,
                 totalTransactions: txSequenceNumber,
                 totalEvents: counters.events,
               };

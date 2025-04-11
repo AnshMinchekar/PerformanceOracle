@@ -28,6 +28,7 @@ async function uploadMetrics(eventDetails) {
       .floatField("gasUsedInUSD", gasUsedInUSD)
       .floatField("avgGasPrice", avgGasPrice)
       .floatField("avgGasPriceInUSD", avgGasPriceInUSD)
+      .floatField("usedETHPriceUSD", eventDetails.usedETHPriceUSD)
       .intField("Block Number", eventDetails.blockNumber)
       .intField("totalEvents", eventDetails.totalEvents)
       .intField("totalTransactions", totalTransactions);
