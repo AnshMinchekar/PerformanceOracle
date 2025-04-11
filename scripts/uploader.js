@@ -10,17 +10,17 @@ async function initializeCounters(startTimestamp = new Date()) {
 
     const timestamp = new Date(startTimestamp);
 
-    // Initialize transaction counter with zero
+    // Initialize transaction counter with zero - USING THE SAME TAG STRUCTURE AS IN uploadMetrics
     const txCounterPoint = new Point("transaction_counter")
       .tag("type", "cumulative")
-      .tag("status", "initialized")
+      // Remove the status tag to match exactly the structure in uploadMetrics
       .timestamp(timestamp)
       .intField("value", 0);
 
-    // Initialize event counter with zero
+    // Initialize event counter with zero - USING THE SAME TAG STRUCTURE AS IN uploadMetrics
     const eventCounterPoint = new Point("event_counter")
       .tag("type", "cumulative")
-      .tag("status", "initialized")
+      // Remove the status tag to match exactly the structure in uploadMetrics
       .timestamp(timestamp)
       .intField("value", 0);
 
@@ -69,15 +69,17 @@ async function uploadMetrics(eventDetails) {
       .intField("totalEvents", totalEvents)
       .intField("totalTransactions", totalTransactions);
 
-    // Transaction counter time series point - using the exact same timestamp as the event
+    // Transaction counter time series point - using the same structure as in initializeCounters
     const txCounterPoint = new Point("transaction_counter")
       .tag("type", "cumulative")
+      // Make sure tag structure matches initialization
       .timestamp(timestamp)
       .intField("value", totalTransactions);
 
-    // Event counter time series point - using the exact same timestamp as the event
+    // Event counter time series point - using the same structure as in initializeCounters
     const eventCounterPoint = new Point("event_counter")
       .tag("type", "cumulative")
+      // Make sure tag structure matches initialization
       .timestamp(timestamp)
       .intField("value", totalEvents);
 
