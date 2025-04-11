@@ -120,18 +120,25 @@ app.post("/run/schedule", (req, res) => {
   const startTask = setTimeout(async () => {
     console.log("Starting Performance Oracle...");
     try {
-        await oracleFunction({ stopTime: new Date(endTimestamp).toISOString() });
+      // Start listening for pending transactions before running Oracle
+      console.log("Setting up event listeners...");
 
-        console.log("Waiting for Performance Oracle to finish...");
-        await new Promise(resolve => setTimeout(resolve, endTimestamp - Date.now()));
+      // Allow some time for event listeners to be properly set up
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        console.log("Performance Oracle shutting down.");
-        process.exit(0);
+      await oracleFunction({ stopTime: new Date(endTimestamp).toISOString() });
 
+      console.log("Performance Oracle active and monitoring transactions");
+
+      // Wait until the end time
+      await new Promise((resolve) => setTimeout(resolve, endTimestamp - Date.now()));
+
+      console.log("Performance Oracle shutting down.");
+      process.exit(0);
     } catch (error) {
-        console.error("Error starting Performance Oracle:", error);
+      console.error("Error starting Performance Oracle:", error);
     }
-}, startTimestamp - now.getTime());
+  }, startTimestamp - now.getTime());
 
   runningTasks.push(startTask);
 
@@ -170,9 +177,7 @@ app.post("/shutdown", (req, res) => {
   }, 1000);
 });
 
-// Initialize InfluxDB client here 
-
-
+// Initialize InfluxDB client here
 
 const PORT = process.env.PORT || 10002;
 const server = app.listen(PORT, () => {
