@@ -13,14 +13,12 @@ async function uploadMetrics(eventDetails) {
     const avgGasPrice = parseFloat(eventDetails.gasPrice);
     const avgGasPriceInUSD = parseFloat(eventDetails.gasPriceInUSD);
     const totalTransactions = parseInt(eventDetails.totalTransactions);
-    const totalEvents = parseInt(eventDetails.totalEvents);
 
     if (isNaN(gasUsed) || isNaN(avgGasPrice) || isNaN(gasUsedInUSD) || isNaN(avgGasPriceInUSD)) {
       console.warn(`Invalid data for txHash ${eventDetails.transactionHash}: Metrics contain invalid values.`);
       return;
     }
 
-    // Main measurement point with all transaction details
     const point = new Point("oracle_performance_metrics")
       .tag("contract", eventDetails.contract)
       .tag("txHash", eventDetails.transactionHash)
@@ -32,25 +30,10 @@ async function uploadMetrics(eventDetails) {
       .floatField("avgGasPriceInUSD", avgGasPriceInUSD)
       .floatField("usedETHPriceUSD", eventDetails.usedETHPriceUSD)
       .intField("Block Number", eventDetails.blockNumber)
-      .intField("totalEvents", totalEvents)
+      .intField("totalEvents", eventDetails.totalEvents)
       .intField("totalTransactions", totalTransactions);
 
-    // Dedicated point for total transactions count (for single stat)
-    const txCountPoint = new Point("total_transactions")
-      .tag("metric_type", "counter")
-      .timestamp(new Date())
-      .intField("count", totalTransactions);
-
-    // Dedicated point for total events count (for single stat)
-    const eventCountPoint = new Point("total_events")
-      .tag("metric_type", "counter")
-      .timestamp(new Date())
-      .intField("count", totalEvents);
-
     writeApi.writePoint(point);
-    writeApi.writePoint(txCountPoint);
-    writeApi.writePoint(eventCountPoint);
-
     await writeApi.close();
     console.log("Successfully uploaded transaction metrics to InfluxDB.");
   } catch (error) {
