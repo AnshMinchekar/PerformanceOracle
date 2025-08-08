@@ -1,0 +1,971 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_factory",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_oracleRegistry",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_accountRegistry",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "contract_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "user_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "order_id",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "status",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "created_at",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "last_updated_at",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "verification_completed",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "settlement_completed",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct TradeStructs.Data",
+        "name": "_tradeData",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "trade_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "seller_user_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "seller_order_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "buyer_user_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "buyer_order_id",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "closed_at",
+            "type": "uint256"
+          },
+          {
+            "internalType": "int256",
+            "name": "power",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "delivery_start",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "delivery_end",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "direction",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "duration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "int256",
+            "name": "energy",
+            "type": "int256"
+          }
+        ],
+        "internalType": "struct TradeStructs.TradeDetails",
+        "name": "_tradeDetails",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "buyer_oracle",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "seller_oracle",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "buyer",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "seller",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct TradeStructs.ParticipantAddresses",
+        "name": "_participants",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "contract_id",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isSuccessful",
+        "type": "bool"
+      }
+    ],
+    "name": "DeliveryCompleted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "contract_id",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isSuccessful",
+        "type": "bool"
+      }
+    ],
+    "name": "DeliveryVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "contract_id",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isSuccessful",
+        "type": "bool"
+      }
+    ],
+    "name": "PaymentCompleted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "contract_id",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "disputeInitiator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "TradeDisputed",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "accountRegistry",
+    "outputs": [
+      {
+        "internalType": "contract AccountRegistry",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "factory",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTradeDetails",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "contract_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "user_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "order_id",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "status",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "created_at",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "last_updated_at",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "verification_completed",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "settlement_completed",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct TradeStructs.Data",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "trade_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "seller_user_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "seller_order_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "buyer_user_id",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "buyer_order_id",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "closed_at",
+            "type": "uint256"
+          },
+          {
+            "internalType": "int256",
+            "name": "power",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "delivery_start",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "delivery_end",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "direction",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "duration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "int256",
+            "name": "energy",
+            "type": "int256"
+          }
+        ],
+        "internalType": "struct TradeStructs.TradeDetails",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "buyer_oracle",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "seller_oracle",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "buyer",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "seller",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct TradeStructs.ParticipantAddresses",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "verification_id",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "status",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct TradeStructs.VerificationMainData",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "created_at",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "scheduled",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "delivered",
+            "type": "uint256"
+          },
+          {
+            "internalType": "int256",
+            "name": "delivered_percentage",
+            "type": "int256"
+          },
+          {
+            "internalType": "int256",
+            "name": "delta_absolut",
+            "type": "int256"
+          },
+          {
+            "internalType": "int256",
+            "name": "delta_percentage",
+            "type": "int256"
+          },
+          {
+            "internalType": "string",
+            "name": "unit",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "status",
+            "type": "bytes32"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "error",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "message",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct TradeStructs.VerificationResultDetails",
+            "name": "details",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct TradeStructs.VerificationResultData",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "settlement_id",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "status",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct TradeStructs.SettlementData",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "oracleRegistry",
+    "outputs": [
+      {
+        "internalType": "contract OracleRegistry",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "participants",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "buyer_oracle",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "seller_oracle",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "settlementData",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "settlement_id",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "status",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "tradeData",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "contract_id",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "user_id",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "order_id",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "status",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "created_at",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "last_updated_at",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "verification_completed",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "settlement_completed",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "tradeDetails",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "trade_id",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "seller_user_id",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "seller_order_id",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "buyer_user_id",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "buyer_order_id",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "closed_at",
+        "type": "uint256"
+      },
+      {
+        "internalType": "int256",
+        "name": "power",
+        "type": "int256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "delivery_start",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "delivery_end",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "direction",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "duration",
+        "type": "uint256"
+      },
+      {
+        "internalType": "int256",
+        "name": "energy",
+        "type": "int256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "_isSuccessful",
+        "type": "bool"
+      }
+    ],
+    "name": "updateDeliveryStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "settlement_id",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "status",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct TradeStructs.SettlementData",
+        "name": "_settlementData",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bool",
+        "name": "_isSuccessful",
+        "type": "bool"
+      }
+    ],
+    "name": "updateSettlementStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "verification_id",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "status",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct TradeStructs.VerificationMainData",
+        "name": "_mainData",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "created_at",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "scheduled",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "delivered",
+            "type": "uint256"
+          },
+          {
+            "internalType": "int256",
+            "name": "delivered_percentage",
+            "type": "int256"
+          },
+          {
+            "internalType": "int256",
+            "name": "delta_absolut",
+            "type": "int256"
+          },
+          {
+            "internalType": "int256",
+            "name": "delta_percentage",
+            "type": "int256"
+          },
+          {
+            "internalType": "string",
+            "name": "unit",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "status",
+            "type": "bytes32"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "error",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "message",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct TradeStructs.VerificationResultDetails",
+            "name": "details",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct TradeStructs.VerificationResultData",
+        "name": "_resultData",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bool",
+        "name": "_isSuccessful",
+        "type": "bool"
+      }
+    ],
+    "name": "updateVerificationStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verificationData",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "verification_id",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "status",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verificationResultData",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "created_at",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "scheduled",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "delivered",
+        "type": "uint256"
+      },
+      {
+        "internalType": "int256",
+        "name": "delivered_percentage",
+        "type": "int256"
+      },
+      {
+        "internalType": "int256",
+        "name": "delta_absolut",
+        "type": "int256"
+      },
+      {
+        "internalType": "int256",
+        "name": "delta_percentage",
+        "type": "int256"
+      },
+      {
+        "internalType": "string",
+        "name": "unit",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "status",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "error",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "message",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct TradeStructs.VerificationResultDetails",
+        "name": "details",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

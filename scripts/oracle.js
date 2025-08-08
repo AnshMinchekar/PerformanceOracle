@@ -29,14 +29,14 @@ async function oracleFunction({ stopTime, outputFileName }) {
       abi: loadABI(process.env.CONTRACT_ORACLE_REGISTRY),
     },
     {
-      contractName: process.env.CONTRACT_DID_REGISTRY,
-      address: process.env.CONTRACT_DID_REGISTRY_ADDRESS.toLowerCase(),
-      abi: loadABI(process.env.CONTRACT_DID_REGISTRY),
+      contractName: process.env.CONTRACT_ACCOUNT_REGISTRY,
+      address: process.env.CONTRACT_ACCOUNT_REGISTRY_ADDRESS.toLowerCase(),
+      abi: loadABI(process.env.CONTRACT_ACCOUNT_REGISTRY),
     },
     {
-      contractName: process.env.CONTRACT_ASSET_DNFT,
-      address: process.env.CONTRACT_ASSET_DNFT_ADDRESS.toLowerCase(),
-      abi: loadABI(process.env.CONTRACT_ASSET_DNFT),
+      contractName: process.env.CONTRACT_ETF,
+      address: process.env.CONTRACT_EFT_ADDRESS.toLowerCase(),
+      abi: loadABI(process.env.CONTRACT_ETF),
     },
   ];
 
