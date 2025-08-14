@@ -59,7 +59,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: "http://0.0.0.0:10002",
+        url: "http://localhost:10002",
       },
     ],
   },
@@ -225,11 +225,11 @@ app.post("/shutdown", (req, res) => {
 });
 
 // Initialize InfluxDB client here
-
+const HOST = process.env.HOST || 'localhost';
 const PORT = process.env.PORT || 10002;
 const server = app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`SwaggerUI running at http://localhost:${PORT}/api-docs`);
+  console.log(`Server running on http://${HOST}:${PORT}`);
+  console.log(`SwaggerUI running at http://${HOST}:${PORT}/api-docs`);
 });
 
 process.on("SIGTERM", gracefulShutdown(server));
